@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Resume Screener AI</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .gradient-bg { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+    .card-hover { transition: transform 0.2s ease, box-shadow 0.2s ease; }
+    .card-hover:hover { transform: translateY(-2px); box-shadow: 0 10px 25px rgba(0,0,0,0.15); }
+    .drop-zone { border: 2px dashed #a78bfa; transition: all 0.3s ease; }
+    .drop-zone:hover { border-color: #7c3aed; background-color: #f5f3ff; }
+    .progress-bar { transition: width 0.8s ease; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .spinner { animation: spin 1s linear infinite; }
+  </style>
+</head>
+<body class="bg-gray-50 min-h-screen">
+
+  <div class="gradient-bg text-white py-10 px-4 text-center shadow-lg">
+    <h1 class="text-4xl font-bold mb-2">Resume Screener AI</h1>
+    <p class="text-purple-200 text-lg">Upload resumes and match them against any job description instantly</p>
+  </div>
+
+  <div class="max-w-5xl mx-auto px-4 py-10">
+
+    <div class="flex justify-center mb-8 gap-4">
+      <button onclick="setMode('single')" id="btn-single"
+        class="px-6 py-2 rounded-full font-semibold bg-purple-600 text-white shadow">
+        Single Resume
+      </button>
+      <button onclick="setMode('bulk')" id="btn-bulk"
+        class="px-6 py-2 rounded-full font-semibold bg-white text-purple-600 border border-purple-600">
+        Bulk Screening
+      </button>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-md p-8 mb-8">
+      <div class="mb-6">
+        <label class="block text-gray-700 font-semibold mb-2">Job Description</label>
+        <textarea id="job-description" rows="5"
+          class="w-full border border-gray-300 rounded-xl p-4 text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-400"
+          placeholder="Paste the job description here..."></textarea>
+      </div>
+
+      <div class="mb-6">
+        <label class="block text-gray-700 font-semibold mb-2">
+          <span id="upload-label">Upload Resume (PDF)</span>
+        </label>
+        <div class="drop-zone rounded-xl p-8 text-center cursor-pointer"
+          onclick="document.getElementById('resume-input').click()">
+          <p class="text-gray-500" id="file-status">Click to upload PDF file(s)</p>
+          <input type="file" id="resume-input" accept=".pdf" class="hidden"
+            onchange="handleFileSelect(this)"/>
+        </div>
+      </div>
+
+      <button onclick="submitForm()"
+        class="w-full gradient-bg text-white py-4 rounded-xl font-bold text-lg hover:opacity-90 transition"
+        id="submit-btn">
+        Screen Resume
+      </button>
+    </div>
+
+    <div id="results-section" class="hidden">
+      <div id="summary-bar" class="bg-white rounded-2xl shadow-md p-6 mb-6 hidden">
+        <h2 class="text-xl font-bold text-gray-800 mb-4">Screening Summary</h2>
+        <div class="grid grid-cols-3 gap-4 text-center">
+          <div class="bg-purple-50 rounded-xl p-4">
+            <div class="text-3xl font-bold text-purple-600" id="total-count">0</div>
+            <div class="text-gray-500 text-sm">Total Screened</div>
+          </div>
+          <div class="bg-green-50 rounded-xl p-4">
+            <div class="text-3xl font-bold text-green-600" id="strong-count">0</div>
+            <div class="text-gray-500 text-sm">Strong Matches</div>
+          </div>
+          <div class="bg-yellow-50 rounded-xl p-4">
+            <div class="text-3xl font-bold text-yellow-600" id="moderate-count">0</div>
+            <div class="text-gray-500 text-sm">Moderate Matches</div>
+          </div>
+        </div>
+      </div>
+
+      <div id="results-container"></div>
+
+      <button onclick="exportCSV()" id="export-btn"
+        class="hidden mt-4 w-full bg-green-500 text-white py-3 rounded-xl font-bold hover:bg-green-600 transition">
+        Export Results as CSV
+      </button>
+    </div>
+
+  </div>
+
+<script>
+  let currentMode = 'single';
+  let allResults = [];
+
+  function setMode(mode) {
+    currentMode = mode;
+    const input = document.getElementById('resume-input');
+    const label = document.getElementById('upload-label');
+    const btnSingle = document.getElementById('btn-single');
+    const btnBulk = document.getElementById('btn-bulk');
+
+    if (mode === 'bulk') {
+      input.multiple = true;
+      label.textContent = 'Upload Multiple Resumes (PDF)';
+      btnBulk.className = 'px-6 py-2 rounded-full font-semibold bg-purple-600 text-white shadow';
+      btnSingle.className = 'px-6 py-2 rounded-full font-semibold bg-white text-purple-600 border border-purple-600';
+      document.getElementById('submit-btn').innerHTML = 'Bulk Screen Resumes';
+    } else {
+      input.multiple = false;
+      label.textContent = 'Upload Resume (PDF)';
+      btnSingle.className = 'px-6 py-2 rounded-full font-semibold bg-purple-600 text-white shadow';
+      btnBulk.className = 'px-6 py-2 rounded-full font-semibold bg-white text-purple-600 border border-purple-600';
+      document.getElementById('submit-btn').innerHTML = 'Screen Resume';
+    }
+    document.getElementById('file-status').textContent = 'Click to upload PDF file(s)';
+    document.getElementById('results-section').classList.add('hidden');
+  }
+
+  function handleFileSelect(input) {
+    const files = input.files;
+    if (files.length > 0) {
+      const names = Array.from(files).map(f => f.name).join(', ');
+      document.getElementById('file-status').textContent = files.length + ' file(s) selected: ' + names;
+    }
+  }
+
+  async function submitForm() {
+    const jd = document.getElementById('job-description').value.trim();
+    const files = document.getElementById('resume-input').files;
+    const btn = document.getElementById('submit-btn');
+
+    if (!jd) { alert('Please enter a job description!'); return; }
+    if (files.length === 0) { alert('Please upload at least one PDF resume!'); return; }
+
+    btn.innerHTML = 'Processing...';
+    btn.disabled = true;
+
+    const formData = new FormData();
+    formData.append('job_description', jd);
+
+    try {
+      let data;
+      if (currentMode === 'single') {
+        formData.append('resume', files[0]);
+        const res = await fetch('/screen', { method: 'POST', body: formData });
+        const single = await res.json();
+        data = { total_resumes: 1, results: [single] };
+      } else {
+        Array.from(files).forEach(f => formData.append('resumes', f));
+        const res = await fetch('/bulk-screen', { method: 'POST', body: formData });
+        data = await res.json();
+      }
+
+      allResults = data.results;
+      displayResults(data);
+
+    } catch(err) {
+      alert('Error: ' + err.message);
+    } finally {
+      btn.innerHTML = currentMode === 'single' ? 'Screen Resume' : 'Bulk Screen Resumes';
+      btn.disabled = false;
+    }
+  }
+
+  function displayResults(data) {
+    const section = document.getElementById('results-section');
+    const container = document.getElementById('results-container');
+    const summaryBar = document.getElementById('summary-bar');
+
+    section.classList.remove('hidden');
+    container.innerHTML = '';
+
+    if (data.results.length > 1) {
+      summaryBar.classList.remove('hidden');
+      document.getElementById('total-count').textContent = data.results.length;
+      document.getElementById('strong-count').textContent =
+        data.results.filter(r => r.match_score >= 60).length;
+      document.getElementById('moderate-count').textContent =
+        data.results.filter(r => r.match_score >= 35 && r.match_score < 60).length;
+      document.getElementById('export-btn').classList.remove('hidden');
+    }
+
+    data.results.forEach((result, index) => {
+      if (result.error) {
+        container.innerHTML += '<div class="bg-red-50 border border-red-200 rounded-2xl p-6 mb-4"><p class="text-red-600 font-semibold">Error - ' + result.filename + ': ' + result.error + '</p></div>';
+        return;
+      }
+
+      const score = result.match_score || 0;
+      const scoreColor = score >= 60 ? 'text-green-600' : score >= 35 ? 'text-yellow-600' : 'text-red-500';
+      const barColor = score >= 60 ? 'bg-green-500' : score >= 35 ? 'bg-yellow-400' : 'bg-red-400';
+      const skills = result.skills_found && result.skills_found.length > 0
+        ? result.skills_found.map(s => '<span class="bg-purple-100 text-purple-700 px-2 py-1 rounded-full text-xs font-medium">' + s + '</span>').join(' ')
+        : '<span class="text-gray-400 text-sm">No known skills detected</span>';
+
+      container.innerHTML += '<div class="bg-white rounded-2xl shadow-md p-6 mb-4 card-hover"><div class="flex justify-between items-start mb-4"><div><h3 class="text-lg font-bold text-gray-800">' + (index+1) + '. ' + result.filename + '</h3><p class="text-gray-500 text-sm">Category: <span class="font-semibold text-purple-600">' + result.predicted_category + '</span></p></div><div class="text-right"><div class="text-3xl font-bold ' + scoreColor + '">' + score + '%</div><div class="text-sm font-semibold">' + result.recommendation + '</div></div></div><div class="mb-4"><div class="flex justify-between text-sm text-gray-500 mb-1"><span>Match Score</span><span>' + score + '%</span></div><div class="w-full bg-gray-200 rounded-full h-3"><div class="' + barColor + ' h-3 rounded-full progress-bar" style="width:' + score + '%"></div></div></div><div><p class="text-sm font-semibold text-gray-600 mb-2">Skills Found:</p><div class="flex flex-wrap gap-2">' + skills + '</div></div></div>';
+    });
+
+    section.scrollIntoView({ behavior: 'smooth' });
+  }
+
+  function exportCSV() {
+    if (!allResults.length) return;
+    const headers = ['Filename', 'Match Score', 'Category', 'Recommendation', 'Skills Found'];
+    const rows = allResults.map(r => [
+      r.filename, r.match_score, r.predicted_category,
+      r.recommendation, (r.skills_found || []).join(' | ')
+    ]);
+    const csv = [headers, ...rows].map(r => r.join(',')).join('\n');
+    const blob = new Blob([csv], { type: 'text/csv' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'screening_results.csv'; a.click();
+  }
+</script>
+</body>
+</html>

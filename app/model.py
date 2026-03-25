@@ -1,3 +1,4 @@
+import re
 import pandas as pd
 import pickle
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -58,29 +59,32 @@ def train_model():
 
 
 def get_match_score(resume_text, job_description):
-    processed_resume = preprocess(resume_text)
-    processed_jd = preprocess(job_description)
+    # Use raw text for skill matching (no preprocessing)
+    resume_lower = resume_text.lower()
+    jd_lower = job_description.lower()
 
-    # Get keywords from both
-    resume_words = set(processed_resume.lower().split())
-    jd_words = set(processed_jd.lower().split())
+    # Extract all words from JD
+    jd_words = set(re.findall(r'\b[a-zA-Z][a-zA-Z0-9+#]*\b', jd_lower))
+    
+    # Remove common stop words
+    stop = {'we', 'are', 'the', 'a', 'an', 'and', 'or', 'for', 
+            'with', 'of', 'in', 'is', 'to', 'at', 'be', 'as',
+            'have', 'has', 'its', 'from', 'that', 'this', 'must',
+            'will', 'can', 'should', 'their', 'our', 'your'}
+    jd_words = jd_words - stop
 
-    # Common words
-    common_words = resume_words.intersection(jd_words)
-
-    # Keyword match score
-    if len(jd_words) == 0:
-        keyword_score = 0
-    else:
-        keyword_score = len(common_words) / len(jd_words)
+    # Check how many JD words exist in resume
+    matched = [w for w in jd_words if w in resume_lower]
+    
+    keyword_score = len(matched) / len(jd_words) if jd_words else 0
 
     # TF-IDF cosine similarity
     tfidf_temp = TfidfVectorizer()
-    vectors = tfidf_temp.fit_transform([processed_resume, processed_jd])
+    vectors = tfidf_temp.fit_transform([resume_lower, jd_lower])
     cosine_score = cosine_similarity(vectors[0], vectors[1])[0][0]
 
     # Combined score
-    final_score = (keyword_score * 0.6) + (cosine_score * 0.4)
+    final_score = (keyword_score * 0.65) + (cosine_score * 0.35)
     return round(float(final_score) * 100, 2)
 
 

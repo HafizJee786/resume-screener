@@ -60,10 +60,28 @@ def train_model():
 def get_match_score(resume_text, job_description):
     processed_resume = preprocess(resume_text)
     processed_jd = preprocess(job_description)
+
+    # Get keywords from both
+    resume_words = set(processed_resume.lower().split())
+    jd_words = set(processed_jd.lower().split())
+
+    # Common words
+    common_words = resume_words.intersection(jd_words)
+
+    # Keyword match score
+    if len(jd_words) == 0:
+        keyword_score = 0
+    else:
+        keyword_score = len(common_words) / len(jd_words)
+
+    # TF-IDF cosine similarity
     tfidf_temp = TfidfVectorizer()
     vectors = tfidf_temp.fit_transform([processed_resume, processed_jd])
-    score = cosine_similarity(vectors[0], vectors[1])[0][0]
-    return round(float(score) * 100, 2)
+    cosine_score = cosine_similarity(vectors[0], vectors[1])[0][0]
+
+    # Combined score
+    final_score = (keyword_score * 0.6) + (cosine_score * 0.4)
+    return round(float(final_score) * 100, 2)
 
 
 def predict_category(resume_text):

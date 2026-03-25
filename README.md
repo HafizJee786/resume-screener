@@ -11,7 +11,7 @@ An AI-powered resume screening web application that automatically analyzes resum
 
 ## 🌐 Live Demo
 👉 **[https://web-production-d332f.up.railway.app](https://web-production-d332f.up.railway.app/)**
-<br>
+&nbsp;
 ![Resume Screener AI](assets/screenshot.png)
 
 

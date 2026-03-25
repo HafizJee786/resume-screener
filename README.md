@@ -2,7 +2,7 @@
 
 An AI-powered resume screening web application that automatically analyzes resumes against job descriptions and ranks candidates by match score using Machine Learning and NLP.
 
-![Python](https://img.shields.io/badge/Python-3.11-blue?style=for-the-badge&logo=python)
+![Python](https://img.shields.io/badge/Python-3.14.3-blue?style=for-the-badge&logo=python)
 ![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-green?style=for-the-badge&logo=fastapi)
 ![ML](https://img.shields.io/badge/Machine_Learning-Scikit--learn-orange?style=for-the-badge&logo=scikit-learn)
 ![Deploy](https://img.shields.io/badge/Deployed-Railway-purple?style=for-the-badge&logo=railway)
